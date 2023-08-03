@@ -2,10 +2,16 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
 const qs = require('qs');
+const cors = require('cors');
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
+app.use(cors({
+  origin: '*',
+  credentials: true,
+}));
 
 app.post('/signin', async (req, res) => {
   try {
@@ -14,8 +20,8 @@ app.post('/signin', async (req, res) => {
     // Construye los datos para la solicitud de token
     const tokenData = qs.stringify({
       'grant_type': 'password',
-      'client_id': 'prueba-tecnica',
-      'client_secret': 'wiUXTRasEncLIvexaSQjsJFo9VKzD5Dc',
+      'client_id': 'prueba-talentum',
+      'client_secret': 'qUYQvL88BirwsxydCiVQCQ8Gdx8jBiQ2',
       'username': username,
       'password': password
     });
@@ -24,7 +30,7 @@ app.post('/signin', async (req, res) => {
     const tokenConfig = {
       method: 'post',
       maxBodyLength: Infinity,
-      url: 'http://localhost:8080/realms/master/protocol/openid-connect/token',
+      url: 'http://host.docker.internal:8080/realms/talentum/protocol/openid-connect/token',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
@@ -38,7 +44,7 @@ app.post('/signin', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: error });
   }
 });
 
@@ -49,7 +55,7 @@ app.get('/signout', async (req, res) => {
     const accessToken = req.headers.authorization.split(' ')[1];
 
     // Revoca el token de acceso en Keycloak
-    await axios.post('http://localhost:8080/realms/master/protocol/openid-connect/logout', null, {
+    await axios.post('http://host.docker.internal:8080/realms/talentum/protocol/openid-connect/logout', null, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
@@ -64,40 +70,21 @@ app.get('/signout', async (req, res) => {
 });
 // Endpoint protegido de la lista de productos (solo acceso de rol admin)
 app.get('/products', async (req, res) => {
-  try {
-    /*const { authorization } = req.headers;
-    if (!authorization) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }*/
 
     // Obtén el token de acceso del encabezado de autorización
     const accessToken = req.headers.authorization.split(' ')[1];
 
     // Decodifica el token de acceso para obtener información sobre el usuario y sus roles
-    const tokenInfoResponse = await axios.get('http://localhost:8080/auth/realms/master/protocol/openid-connect/userinfo', {
+    const tokenInfoResponse = await axios.get('http://host.docker.internal:8080/realms/talentum/protocol/openid-connect/userinfo', {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
     });
-      return tokenInfoResponse
-    /*const userRoles = tokenInfoResponse.data.realm_access.roles;
 
-    // Verifica si el usuario tiene el rol "admin"
-    if (userRoles.includes('admin')) {
-      // Aquí devuelves la lista de productos
-      const products = [
-        { id: 1, name: 'Product 1', description: 'Description 1', price: 10.99 },
-        { id: 2, name: 'Product 2', description: 'Description 2', price: 20.99 }
-      ];
-      return res.json(products);
-    } else {
-      return res.status(403).json({ error: 'Forbidden' });
-    }*/
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Internal Server Error' });
-  }
+    return tokenInfoResponse
+    
 });
+
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
